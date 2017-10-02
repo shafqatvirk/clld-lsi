@@ -15,16 +15,19 @@ import lsi
 
 
 class MyMapMarker(LanguageByFamilyMapMarker):
-    def get_icon(self, ctx, req):
+    def __call__(self, ctx, req):
         if IValue.providedBy(ctx):
-            ##print ctx,[self],ctx.domainelement.parameter
+            print ctx,[self],ctx.domainelement.jsondata['icon']
             
-            return ctx.domainelement.jsondata['icon']
+            ##return ctx.domainelement.jsondata['icon']
+            return req.static_url('lsi:static/icons/' + ctx.domainelement.jsondata['icon'] + '.png')
+            ##return req.static_url('lsi:static/icons/c000000.png')
         if IValueSet.providedBy(ctx):
-            return ctx.values[0].domainelement.jsondata['icon']
+            ##return ctx.values[0].domainelement.jsondata['icon']
+            req.static_url('lsi:static/icons/' + ctx.values[0].domainelement.jsondata['icon'] + '.png')
         if IDomainElement.providedBy(ctx):
-            
-            return ctx.jsondata['icon']
+            return req.static_url('lsi:static/icons/' + ctx.jsondata['icon'] + '.png')
+            ##return ctx.jsondata['icon']
         #print ctx, ctx.family
         return LanguageByFamilyMapMarker.get_icon(self, ctx, req)
 

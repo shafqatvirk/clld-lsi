@@ -34,8 +34,8 @@ def icons(req, param):
     print icon_map
     td = lambda spec: HTML.td(
         HTML.img(
-            ##src=req.static_url('clld:web/static/icons/' + icon_map[spec] + '.png'),
-            src=req.static_url('lsi:static/icons/' + icon_map[spec] + '.png'),
+            src=req.static_url('clld:web/static/icons/' + icon_map[spec] + '.png'),
+            ##src=req.static_url('lsi:static/icons/' + icon_map[spec] + '.png'),
             height='20',
             width='20'),
         onclick='LSI.reload({"%s": "%s"})' % (param, spec))

@@ -7,6 +7,7 @@ from functools import partial
 import io
 from datetime import date, datetime
 import os
+import itertools
 
 import transaction
 from pytz import utc
@@ -24,7 +25,7 @@ import issues
 
 import lsi
 from lsi import models
-
+from lsi import util
 from clldclient.glottolog import Glottolog
 ##from clld.web import icon
 
@@ -240,11 +241,15 @@ def main(args):
 
         vdesclist = [veq.split("==") for veq in feature.vdoc.split("||")]
         vdesc = {v.replace(".", "-"): desc for [v, desc] in vdesclist}
+        ##vdesc = {v.replace(".", "-")+'-'+fmly: desc for ((v,desc),fmly) in itertools.product([(vv,desc) for [vv, desc] in vdesclist],['Austroasiatic','Dravidian','Indo-European','Sino-Tibetan'])}
 
         vdesc.setdefault('?', 'Not known')
         if 'N/A' not in vdesc and feature.dependson:
             vdesc["N/A"] = "Not Applicable"
         vi = {v: i for (i, v) in enumerate(sorted(vdesc.keys()))}
+        ##vicons = {v+'-'+f:v+'-'+f for (v,f) in itertools.product(['0','1','2','3'],['Austroasiatic','Dravidian','Indo-European','Sino-Tibetan'])}
+        ##vicons['?'] = 'c000000'
+        ##vicons['N/A'] = 'c000000'
         vicons = icons.iconize(vi.keys())
         for v, desc in vdesc.items():
             #print v,vicons[v]
@@ -272,6 +277,7 @@ def main(args):
     done = set()
     glottolog = Glottolog()
     for ld in ldps:
+        
         '''############################### for printing different map markers for different familys for features:shafqat
         #print data['Family']
         
@@ -287,8 +293,8 @@ def main(args):
                 if gl_family:
                     family = data['Family'].get(gl_family.id)
                     
-        ##ld['value'] = ld['value']+'-'+str(family)
-        ld['value'] = combineValueFamily(ld['value'],str(family))
+        ld['value'] = ld['value']+'-'+str(family)
+        ##ld['value'] = combineValueFamily(ld['value'],str(family))
         #print family
         #####################################'''
         parameter = data['Feature'][ld['feature_alphanumid']]

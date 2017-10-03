@@ -17,19 +17,23 @@ import lsi
 class MyMapMarker(LanguageByFamilyMapMarker):
     def __call__(self, ctx, req):
         if IValue.providedBy(ctx):
-            print ctx,[self],ctx.domainelement.jsondata['icon']
-            
+            #print ctx.jsondata['family']#,ctx,[self],ctx.domainelement.jsondata['icon']
             ##return ctx.domainelement.jsondata['icon']
-            return req.static_url('lsi:static/icons/' + ctx.domainelement.jsondata['icon'] + '.png')
+            return req.static_url('lsi:static/icons/' + ctx.jsondata['family'] + ctx.domainelement.jsondata['icon'] + '.png')
             ##return req.static_url('lsi:static/icons/c000000.png')
         if IValueSet.providedBy(ctx):
+            #print ctx.domainelement
             ##return ctx.values[0].domainelement.jsondata['icon']
             req.static_url('lsi:static/icons/' + ctx.values[0].domainelement.jsondata['icon'] + '.png')
         if IDomainElement.providedBy(ctx):
-            return req.static_url('lsi:static/icons/' + ctx.jsondata['icon'] + '.png')
+            ##return None
+            print ctx.jsondata
+            return req.static_url('lsi:static/icons/' + 'cr'+''.join(ctx.jsondata['icon'][:]) + '.png')
             ##return ctx.jsondata['icon']
-        #print ctx, ctx.family
-        return LanguageByFamilyMapMarker.get_icon(self, ctx, req)
+        #print LanguageByFamilyMapMarker
+        #print LanguageByFamilyMapMarker.get_icon(self, ctx, req)
+        ##return LanguageByFamilyMapMarker.get_icon(self, ctx, req)
+        return req.static_url('lsi:static/icons/'+LanguageByFamilyMapMarker.get_icon(self, ctx, req) + '.png')
 
 
 def main(global_config, **settings):

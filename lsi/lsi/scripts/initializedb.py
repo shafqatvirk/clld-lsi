@@ -39,6 +39,9 @@ NOCODE_TO_GLOTTOCODE = {
     'NOCODE_Sisiqa': 'sisi1250',
 }
 
+FamilyCodes = {'Austroasiatic':'a', 'Dravidian':'d','Indo-European':'i','Sino-Tibetan':'t','None':''}
+Colors = {'0':'000000','1':'0000dd','2':'0000ff','3':'009900','?':'00ffff','N/A':'00ffff'}
+
 
 def savu(txt, fn):
     with io.open(fn, 'w', encoding="utf-8") as fp:
@@ -153,6 +156,7 @@ def main(args):
 
     ldps = sorted(ldps, key=lambda d: d['feature_alphanumid'])
 
+
     #lgs["ygr"] = "Hua"
 
     for lgid, lgname in lgs.items():
@@ -241,24 +245,24 @@ def main(args):
 
         vdesclist = [veq.split("==") for veq in feature.vdoc.split("||")]
         vdesc = {v.replace(".", "-"): desc for [v, desc] in vdesclist}
-        ##vdesc = {v.replace(".", "-")+'-'+fmly: desc for ((v,desc),fmly) in itertools.product([(vv,desc) for [vv, desc] in vdesclist],['Austroasiatic','Dravidian','Indo-European','Sino-Tibetan'])}
+        ##vdesc = {fmly+val2icon(v): desc for ((v,desc),fmly) in itertools.product([(vv,desc) for [vv, desc] in vdesclist],['c','d','f','t'])}
 
         vdesc.setdefault('?', 'Not known')
         if 'N/A' not in vdesc and feature.dependson:
             vdesc["N/A"] = "Not Applicable"
         vi = {v: i for (i, v) in enumerate(sorted(vdesc.keys()))}
-        ##vicons = {v+'-'+f:v+'-'+f for (v,f) in itertools.product(['0','1','2','3'],['Austroasiatic','Dravidian','Indo-European','Sino-Tibetan'])}
-        ##vicons['?'] = 'c000000'
-        ##vicons['N/A'] = 'c000000'
-        vicons = icons.iconize(vi.keys())
-        for v, desc in vdesc.items():
+        ##vicons = {f+val2icon(v):f+val2icon(v) for (v,f) in itertools.product(['0','1','2','3'],['c','d','f','t'])}
+        ##vicons['?'] = 'c00ffff'
+        ##vicons['N/A'] = 'c00ffff'
+        ##vicons = icons.iconize(vi.keys())
+        for (v, desc) in vdesc.items():
             #print v,vicons[v]
             data.add(
                 common.DomainElement, (fid, v),
                 id='%s-%s' % (fid, v),
                 name=v,
                 description=desc,
-                jsondata={"icon": vicons[v]},
+                jsondata={"icon": Colors[v]},
                 number=vi[v],
                 parameter=feature)
     DBSession.flush()
@@ -278,7 +282,7 @@ def main(args):
     glottolog = Glottolog()
     for ld in ldps:
         
-        '''############################### for printing different map markers for different familys for features:shafqat
+        ############################### for printing different map markers for different familys for features:shafqat
         #print data['Family']
         
         language = data['lsiLanguage'][ld['language_id']]
@@ -293,10 +297,10 @@ def main(args):
                 if gl_family:
                     family = data['Family'].get(gl_family.id)
                     
-        ld['value'] = ld['value']+'-'+str(family)
+        ##ld['value'] = ld['value']+'-'+str(family)
         ##ld['value'] = combineValueFamily(ld['value'],str(family))
         #print family
-        #####################################'''
+        #####################################
         parameter = data['Feature'][ld['feature_alphanumid']]
         language = data['lsiLanguage'][ld['language_id']]
         
@@ -332,11 +336,11 @@ def main(args):
             )
         #print
         #print "this one"
-        #print data['DomainElement'][(ld['feature_alphanumid'], ld['value'])].jsondata
+        #print ld['value'],family
         models.lsiValue(
             id=id_,
             domainelement=data['DomainElement'][(ld['feature_alphanumid'], ld['value'])],
-            jsondata={"icon": data['DomainElement'][(ld['feature_alphanumid'], ld['value'])].jsondata},
+            jsondata={"icon": data['DomainElement'][(ld['feature_alphanumid'], ld['value'])].jsondata,"family":FamilyCodes[str(family)]},
             comment=ld["comment"],
             valueset=vs,
             contributed_datapoint=ld["contributor"])
@@ -427,51 +431,6 @@ def main(args):
     #print ctbs
     
     
-'''def combineValueFamily(value,family):
-    if value == '0' and family == 'Austroasiatic':
-        return 'c000000'
-    elif value == '1' and family == 'Austroasiatic':
-        return 'c0000dd'
-    elif value == '2' and family == 'Austroasiatic':
-        return 'c0000ff'
-    elif value == '3' and family == 'Austroasiatic':
-        return 'c009900'
-    if value == '0' and family == 'Dravidian':
-        return 'd000000'
-    elif value == '1' and family == 'Dravidian':
-        return 'd0000dd'
-    elif value == '2' and family == 'Dravidian':
-        return 'd0000ff'
-    elif value == '3' and family == 'Dravidian':
-        return 'd009900'
-    if value == '0' and family == 'Indo-European':
-        return 'f000000'
-    elif value == '1' and family == 'Indo-European':
-        return 'f0000dd'
-    elif value == '2' and family == 'Indo-European':
-        return 'f0000ff'
-    elif value == '3' and family == 'Indo-European':
-        return 'f009900'
-    if value == '0' and family == 'Sino-Tibetan':
-        return 't000000'
-    elif value == '1' and family == 'Sino-Tibetan':
-        return 't0000dd'
-    elif value == '2' and family == 'Sino-Tibetan':
-        return 't0000ff'
-    elif value == '3' and family == 'Sino-Tibetan':
-        return 't009900'
-    else:
-        return 'c00ffff'
-    
-def val2icon(v):
-    if v=='0':
-        return '000000'
-    elif v=='1':
-        return '0000dd'
-    elif v=='2':
-        return '0000ff'
-    elif v=='3':
-        return '009900' '''
 
 
 def prime_cache(args):

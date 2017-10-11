@@ -18,9 +18,13 @@ from clld.db.models import common
 from clld.db.util import compute_language_sources
 from clld.lib.bibtex import unescape, Record
 from dsv import reader
-from clld_glottologfamily_plugin.util import load_families
-
-
+##from clld_glottologfamily_plugin.util import load_families
+from clld.web.icon import ORDERED_ICONS, MapMarker
+from itertools import cycle
+from clld_glottologfamily_plugin.models import Family
+from clld.db.models.common import IdentifierType, Identifier
+from clld.scripts.util import add_language_codes
+########
 import issues
 
 import lsi
@@ -37,10 +41,15 @@ NOCODE_TO_GLOTTOCODE = {
     'NOCODE_Nzadi': 'nzad1234',
     'NOCODE_Paunaca': 'paun1241',
     'NOCODE_Sisiqa': 'sisi1250',
+    
 }
 
 FamilyCodes = {'Austroasiatic':'a', 'Dravidian':'d','Indo-European':'i','Sino-Tibetan':'t','None':''}
 Colors = {'0':'000000','1':'0000dd','2':'0000ff','3':'009900','?':'00ffff','N/A':'00ffff'}
+
+ISOLATES_ICON = 'cff6600'
+custom_icons = {'Sino-Tibetan':'t009900','Dravidian':'d009900','Indo-European':'i009900','Austroasiatic':'a009900'}
+
 
 
 def savu(txt, fn):
@@ -58,7 +67,8 @@ def _dtab(dir_, fn):
     ##print fn,dir_
     lpd = []
     #for d in reader(dir_.joinpath(fn), dicts=True, quoting=csv.QUOTE_NONE):
-    for d in reader(('/Users/virk/shafqat/postDoc-Swe/project/clld/clld/lsi/lsi/data/'+fn), dicts=True, quoting=csv.QUOTE_NONE):
+    ##for d in reader(('/Users/virk/shafqat/postDoc-Swe/project/clld/clld/lsi/lsi/data/'+fn), dicts=True, quoting=csv.QUOTE_NONE):
+    for d in reader(('/Users/virk/shafqat/postDoc-Swe/project/clld/clld/lsi/lsi/lsi_data/'+fn), dicts=True, quoting=csv.QUOTE_NONE):
         lpd.append({
             k.replace('\ufeff', ''): (v or '').strip()
             for k, v in d.items() + [("fromfile", fn)]})
@@ -130,7 +140,8 @@ def main(args):
     #print args.data_file()
     #tabfns = ['%s' % fn.basename() for fn in args.data_file().files('nts_*.tab')]
     #tabfns = ['nts_18.tab']
-    tabfns = os.listdir('/Users/virk/shafqat/postDoc-Swe/project/clld/clld/lsi/lsi/data')[1:]
+    ##tabfns = os.listdir('/Users/virk/shafqat/postDoc-Swe/project/clld/clld/lsi/lsi/data')[1:]
+    tabfns = os.listdir('/Users/virk/shafqat/postDoc-Swe/project/clld/clld/lsi/lsi/lsi_data')[1:]
     #print tabfns
     args.log.info("Sheets found: %s" % tabfns)
     ldps = []
@@ -141,7 +152,7 @@ def main(args):
     for fn in tabfns:
         for ld in dtab(fn):
             
-            if ld['language_id'] == 'qgr':
+            if ld['language_id'] == 'qgr' or ld['language_id'] == '---' or ld['language_id'] == '': # to exclude languages which do not have an iso-code
                 continue
             if "feature_alphanumid" not in ld:
                 args.log.info("NO FEATUREID %s %s" % (len(ld), ld))
@@ -170,7 +181,8 @@ def main(args):
     #print data['ntsLanguage'].values()[1].id
     load_families(
         data,
-        [(NOCODE_TO_GLOTTOCODE.get(l.id, l.id), l) for l in data['lsiLanguage'].values()],
+        ##[(NOCODE_TO_GLOTTOCODE.get(l.id, l.id), l) for l in data['lsiLanguage'].values()],
+        [(NOCODE_TO_GLOTTOCODE.get(l.id, l.id), l) for l in data['lsiLanguage'].values() if l.id != '---' and l.id != ''],
         isolates_icon='tcccccc')
     #print 'family'
     #print data['Family'].get('sino1245').jsondata
@@ -214,6 +226,7 @@ def main(args):
     for _, dfsids in groupby(
             sorted((f.get('feature_name', fid), fid) for fid, f in fs),
             key=lambda t: t[0]):
+        ##print [(k,v) for (k,v) in list(dfsids)],len(list(dfsids))
         assert len(list(dfsids)) == 1
     #print 'here is nlgs'
     
@@ -439,6 +452,59 @@ def prime_cache(args):
     it will have to be run periodiucally whenever data has been updated.
     """
 
+
+def load_families(
+        data,
+        languages,
+        glottolog=None,
+        icons=ORDERED_ICONS,
+        isolates_icon=ISOLATES_ICON):
+    """Add Family objects to a database and update Language object from Glottolog.
+
+    Family information is retrieved from Glottolog based on the id attribute of a
+    language. This id must be either a glottocode or an ISO 639-3 code.
+
+    :param data:
+    :return:
+    """
+    icons = cycle([getattr(i, 'name', i) for i in icons if getattr(i, 'name', i) != isolates_icon])
+    glottolog = glottolog or Glottolog()
+    print len(languages),languages
+
+    for language in languages:
+        if isinstance(language, (tuple, list)) and len(language) == 2:
+            code, language = language
+        else:
+            code = language.id
+        print language,code
+        if code != '-':
+            gl_language = glottolog.languoid(code)
+            if gl_language:
+                gl_family = gl_language.family
+                if gl_family and gl_family.name in ['Sino-Tibetan','Dravidian','Indo-European','Austroasiatic']: # the second condition is added by me (shafqat)
+                    family = data['Family'].get(gl_family.id)
+                    #print 'this one'
+                    #print gl_family.name
+                    if not family:
+                        family = data.add(
+                            Family,
+                            gl_family.id,
+                            id=gl_family.id,
+                            name=gl_family.name,
+                            description=Identifier(
+                                name=gl_family.id, type=IdentifierType.glottolog.value).url(),
+                            ##jsondata=dict(icon=next(icons)))
+                            jsondata=dict(icon=custom_icons[gl_family.name])) ## based on family, we can use different icons if we like as needed in case of LSI
+                    language.family = family
+
+                language.macroarea = gl_language.macroareas[0]
+                add_language_codes(
+                    data, language, gl_language.iso_code, glottocode=gl_language.id)
+                for attr in 'latitude', 'longitude', 'name':
+                    if getattr(language, attr) is None:
+                        setattr(language, attr, getattr(gl_language, attr))
+            else:
+                language.macroarea = None
 
 if __name__ == '__main__':
     initializedb(create=main, prime_cache=prime_cache)
